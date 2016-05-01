@@ -1,5 +1,3 @@
-#include <Arduino.h>
-
 /***************************************************
   Adafruit MQTT Library Ethernet Example
 
@@ -11,27 +9,21 @@
   Derived from the code written by Limor Fried/Ladyada for Adafruit Industries.
   MIT license, all text above must be included in any redistribution
  ****************************************************/
+
+#include <Arduino.h>
 #include <SPI.h>
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
-
 #include <Ethernet.h>
 #include <EthernetClient.h>
 #include <Dns.h>
 #include <Dhcp.h>
-
 #include <key_file.h>
 
 /************************* Ethernet Client Setup *****************************/
 byte mac[] = {0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02};
-
-//Uncomment the following, and set to a valid ip if you don't have dhcp available.
 IPAddress iotIP (10, 0, 1, 7);
-//Uncomment the following, and set to your preference if you don't have automatic dns.
 IPAddress dnsIP (10, 0, 1, 1);
-//If you uncommented either of the above lines, make sure to change "Ethernet.begin(mac)" to "Ethernet.begin(mac, iotIP)" or "Ethernet.begin(mac, iotIP, dnsIP)"
-
-// adding gateway and subnet
 IPAddress gateway (10, 0, 1, 1);
 IPAddress subnet (255, 255, 255, 0);
 
@@ -46,8 +38,8 @@ IPAddress subnet (255, 255, 255, 0);
 
 #define LED 2 // digital output pin 2 (D2) - the on off button feed turns this LED on/off
 #define PWMOUT 5 // digital output pin 5 (D5) - the slider feed sets the PWM output of this pin
-#define PHOTO 0 // analog input pin 23 (A0)
-#define TEMP 1 // analog input pin 24 (A1)
+#define PHOTO 0 // analog input pin 23 (A0) - photoresistor
+#define TEMP 1 // analog input pin 24 (A1) - TMP36 temperature sensor
 
 /************ Global State (you don't need to change this!) ******************/
 
@@ -66,7 +58,6 @@ const char MQTT_PASSWORD[] PROGMEM  = AIO_KEY;
 
 Adafruit_MQTT_Client mqtt(&client, MQTT_SERVER, AIO_SERVERPORT, MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD);
 
-// You don't need to change anything below this line!
 #define halt(s) { Serial.println(F( s )); while(1);  }
 
 
@@ -108,10 +99,14 @@ void setup() {
 }
 
 //uint32_t x = 0;
-uint32_t a = 0;
-uint32_t b = 0;
+uint32_t ADC0 = 0;
+uint32_t ADC1 = 0;
+float volts = 0.0;
+float degC = 0.0;
+float units = 0.0;
 
 void loop() {
+
   // Ensure the connection to the MQTT server is alive (this will make the first
   // connection and automatically reconnect when disconnected).  See the MQTT_connect
   // function definition further below.
@@ -144,22 +139,24 @@ void loop() {
   }
 
   // Now we can publish stuff!
-  a = analogRead(PHOTO);
+  ADC0 = analogRead(PHOTO);
   Serial.print(F("\nSending photocell value "));
-  Serial.print(a);
+  Serial.print(ADC0);
   Serial.print(" ... ");
-  if (! photocell.publish(a)) {
+  if (! photocell.publish(ADC0)) {
     Serial.println(F("Failed"));
   } else {
     Serial.println(F("OK!"));
   }
 
   // publish temperature sensor data
-  b = analogRead(TEMP);
+  ADC1 = analogRead(TEMP);
+  volts = ADC1 * .0049; // convert analog units to degrees C
+  degC = (volts * 108.7) - 59.78 + 5; // convert voltage to degrees C
   Serial.print(F("\nSending temperature value "));
-  Serial.print(b);
+  Serial.print(degC);
   Serial.print(" ... ");
-  if (! tempsensor.publish(b)) {
+  if (! tempsensor.publish(degC)) {
     Serial.println(F("Failed"));
   } else {
     Serial.println(F("OK!"));
